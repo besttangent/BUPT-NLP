@@ -1,0 +1,168 @@
+# -*- coding: UTF-8 -*-
+
+# 字典树，用于插入单词和查找单词
+class Trie:
+	#字典初始化，将结点个数设置为1，即根结点
+	#将转移表设置为空
+	def __init__(self):
+		self.sz=1
+		self.val=["null"]
+		self.next=[]
+		self.next.append({})
+	
+	#插入一个的单词
+	def Insert(self,str,idx):
+		strlen=len(str)
+		u=0
+		for i in range(strlen):
+			c=str[strlen-i-1]
+			if(c in self.next[u]):
+				pass
+			else:
+				self.next.append({})
+				self.next[u][c]=self.sz
+				self.val.append("null")
+				self.sz+=1
+			u=self.next[u][c]
+		self.val[u]=idx
+		return
+
+	#以u为初始状态，查找是否有ch指向的边
+	def Find(self,u,ch):
+		if ch in self.next[u]:
+			return self.next[u][ch]
+		else:
+			return 0
+
+	#查询一个单词是否在字典中
+	def Query(self,str):
+		strlen=len(str)
+		u=0
+		for i in range(strlen):
+			c=str[i]
+			if(c in self.next[u]):
+				u=self.next[u][c]
+			else:
+				return False
+		if self.val[u]!=0:
+			return True
+		else:
+			return False
+
+#逆向最大匹配
+def MaxMatch(dictionary,string):
+	# print(string)
+	u=0
+	res=""
+	strlen=len(string)
+	i=strlen-1
+	words=[]
+	while i > -1 :
+		ch=string[i]
+		ne=dictionary.Find(u,ch)
+		if(ne!=0):
+			res=res+ch
+			u=ne
+			i-=1
+		else:
+			if(res!=""):
+				words.append([res,dictionary.val[u]])
+				print("%s/%s " % (res,dictionary.val[u]),end='')
+				u=0
+				res=""
+			else:
+				words.append([res,dictionary.val[u]])
+				# print("%s/%s " % (ch,"null"),end='')
+				i-=1
+	if(res!=""):
+		words.append([res,dictionary.val[u]])
+		# print("%s/%s " % (res,dictionary.val[u]),end='')
+	# print("")
+	return words
+#加载训练数据，即单词串
+def ImportTrainingData(dictionary,data):
+	for line in data:
+		for word in line:
+			dictionary.Insert(word[0],word[1])
+
+#加载测试数据，需要将一行的单词拼接成一行字符串
+def ImportTestingData(dictionary,data):
+	result=[]
+	for line in data:
+		string=""
+		for word in line:
+			string=string+word[0]
+		res=MaxMatch(dictionary,string)
+		result.append([line,res])
+	return result
+def OutputResult(answerResult):
+	numberSegmented=0
+	numberCorrectSegmented=0
+	numberReference=0
+	for line in answerResult:
+		for ans in line[0]:
+			numberReference+=1
+		for res in line[1]:
+			numberSegmented+=1
+		i=0
+		j=0
+		ansLen=len(line[0])
+		resLen=len(line[1])
+		strAnsLen=0
+		strResLen=0
+		while i < ansLen and j < resLen:
+			# print(line[0][i][0],line[1][j][0]) 
+			if(line[0][i][0]==line[1][j][0]):
+				strAnsLen+=len(line[0][i][0])
+				strResLen+=len(line[1][j][0])
+				i,j,numberCorrectSegmented=i+1,j+1,numberCorrectSegmented+1
+			elif(strAnsLen>strResLen):
+				strResLen+=len(line[1][j][0])
+				j+=1
+			elif(strAnsLen==strResLen):
+				strAnsLen+=len(line[0][i][0])
+				strResLen+=len(line[1][j][0])
+				i,j=i+1,j+1
+			else:
+				strAnsLen+=len(line[0][i][0])
+				i+=1
+	Precision=float(numberCorrectSegmented)/float(numberSegmented)
+	Recall=float(numberCorrectSegmented)/float(numberReference)
+	FMeasure=2*Precision*Recall/(Precision+Recall)
+	print("FMeasure:%lf" % (FMeasure,))
+	return FMeasure
+def FileToList(string):
+	file=open(string,encoding='cp936')
+	data=[]
+	for line in file.readlines():
+		tmpline=""
+		for x in line:
+			if x != '[' and x != ']':
+				tmpline=tmpline+x
+
+		line=tmpline	
+		#对于每一行按空格分割字符
+		lineList=line.strip().split(' ')
+		aLineData=[]
+		for block in lineList[1:]:
+			if(block==''):
+				continue
+			#对于每一个单词和标号同过斜杠分割开来
+			wordLabel=block.split('/')
+			if(len(wordLabel)!=2):
+				continue
+			aLineData.append(wordLabel)
+		data.append(aLineData)
+	dataLen=len(data)
+	sublen=int(dataLen*0.80)
+	file.close()
+	# out=open("result.txt","w")
+	# out.write(str(data))
+	return data[0:sublen],data[sublen:]
+if __name__ == '__main__':
+	# print("Hello World!")
+	dictionary=Trie()#创建一个空字典
+	trainingData,testingData=FileToList("1998-01-105-带音.txt")
+	ImportTrainingData(dictionary,trainingData)
+	answerResult=ImportTestingData(dictionary,testingData)
+	FMeasure=OutputResult(answerResult)
